@@ -2,10 +2,10 @@
   (:use expectations)
   (:require
    [bugsnag-client.core :as bugsnag]
-   [org.httpkit.client :as http-client]
+   [clj-http.client :as http-client]
    [cheshire.core :as json]
-   [ring.mock.request :as mock]
-   [org.httpkit.fake :as fake]))
+   [clojure.pprint :as pprint]
+   [ring.mock.request :as mock]))
 
 (defn trigger-exception []
   (try
@@ -45,21 +45,17 @@
           (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
             (wrapped-handler (mock/request :get "/")))))
 
-;;Expect to send a JSON post request to bugsnag with the exception information
-(expect (more-of exception-map
-                 {"apiKey" "770c0307e1a8949161ba0a8c904ebd6d"
-                  "notifier" {"name" "bugsnag-client"
-                              "version" "0.0.1"
-                              "url" "https://github.com/omartell/bugsnag-client"}
-                  "severity" "error"
-                  "app" {"releaseStage" "production"}
-                  "device" {"hostname" "sledgehammer.local"}} (in (-> exception-map
-                                                                      first
-                                                                      last
-                                                                      :body
-                                                                      json/parse-string)))
-        (side-effects [http-client/post]
+;;Expect to send a JSON post request to bugsnag with the exception
+;;information
+(expect (more-of [[exception-map]]
+                 {:apiKey "770c0307e1a8949161ba0a8c904ebd6d"
+                  :notifier {:name "bugsnag-client"
+                             :version "0.0.1"
+                             :url "https://github.com/omartell/bugsnag-client"}} (in exception-map)
+                  {:severity "error"
+                   :app {:releaseStage "production"}
+                   :device {:hostname "sledgehammer.local"}} (in (-> exception-map :events first)))
+        (side-effects [bugsnag/post-json-to-bugsnag]
                       (bugsnag/notify-bugsnag (mock/request :get "/")
                                               bugsnag-config
                                               (trigger-exception))))
-

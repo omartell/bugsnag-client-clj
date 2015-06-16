@@ -4,9 +4,9 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.6.0"]
+                 [clj-http "1.1.2"]
                  [cheshire "5.5.0"]
-                 [clj-stacktrace "0.2.8"]
-                 [ring/ring-core "1.3.2"]]
+                 [clj-stacktrace "0.2.8"]]
   :profiles
   {:dev {:dependencies [[expectations "2.0.16"]
                         [clj-http "1.1.2"]
