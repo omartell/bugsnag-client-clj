@@ -14,15 +14,15 @@
       e)))
 
 (defn erroring-handler [request]
-  (throw (Exception. "Boom!")))
+  (throw (ex-info "Boom!" {})))
 
 (def bugsnag-config
   {:api-key "770c0307e1a8949161ba0a8c904ebd6d"
-   :release-stages ["staging" "production"]
+   :notify-release-stages ["staging" "production"]
    :release-stage "production"})
 
-;;Expect that the bugsnag-ring-handler gets notified when an exception happens
-(expect (more-of [[request-info config e]]
+;;The bugsnag-ring-handler gets notified when an exception happens
+(expect (more-of [[e config request-info]]
                  {:server-port 80
                   :server-name "localhost"
                   :remote-addr "localhost"
@@ -33,20 +33,19 @@
                   :headers {"host" "localhost"}} request-info
                   {:api-key "770c0307e1a8949161ba0a8c904ebd6d"} (in config)
                   Exception e)
-        (side-effects [bugsnag/notify-bugsnag]
+        (side-effects [bugsnag/report-web-exception]
                       (try
                         (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
                           (wrapped-handler (mock/request :get "/")))
                         (catch Exception e))))
 
-;;Expect to rethrow exception after sending request to bugsnag
+;;Rethrow exception after sending request to bugsnag
 (expect Exception
         (do
           (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
             (wrapped-handler (mock/request :get "/")))))
 
-;;Expect to send a JSON post request to bugsnag with the exception
-;;information
+;;Send a JSON post request to bugsnag with the exception information
 (expect (more-of [[exception-map]]
                  {:apiKey "770c0307e1a8949161ba0a8c904ebd6d"
                   :notifier {:name "bugsnag-client"
@@ -56,6 +55,15 @@
                    :app {:releaseStage "production"}
                    :device {:hostname "sledgehammer.local"}} (in (-> exception-map :events first)))
         (side-effects [bugsnag/post-json-to-bugsnag]
-                      (bugsnag/notify-bugsnag (mock/request :get "/")
-                                              bugsnag-config
-                                              (trigger-exception))))
+                      (bugsnag/report (trigger-exception) bugsnag-config)))
+
+;;It does not send exception to bugsnag if release stage is not in notify release stages
+(expect []
+        (side-effects [bugsnag/post-json-to-bugsnag]
+                      (with-redefs [clj-http.client/post
+                                    (fn []
+                                      (throw (ex-info "Bugsnag should not be notified!" {:cause "foo"})))]
+                        (bugsnag/report (trigger-exception)
+                                        {:api-key "770c0307e1a8949161ba0a8c904ebd6d"
+                                         :notify-release-stages ["production"]
+                                         :release-stage "staging"}))))
