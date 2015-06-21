@@ -1,5 +1,6 @@
 (ns bugsnag-client.core
   (:require [clojure.data.json :as json]
+            [clojure.edn :as edn]
             [clojure.string :as string]
             [clj-http.client :as http]
             [clj-stacktrace.core :as stacktrace]))
@@ -16,6 +17,22 @@
   (let [notify-release-stages (into #{} (:notify-release-stages config))]
     (notify-release-stages (config :release-stage "production"))))
 
+(defn- in-project? [namespace]
+  (let [application-namespace (second (edn/read-string (slurp "project.clj")))]
+    (boolean (re-find (re-pattern (str application-namespace))
+                      namespace))))
+
+(defn- generate-bugsnag-stacktrace [parsed-exception]
+  (map #(-> {:file (:file %)
+             :inProject (if (:java %)
+                          false
+                          (in-project? (:ns %)))
+             :lineNumber (:line %)
+             :method (if (:java %)
+                       (str (:class %) "/" (:method %))
+                       (str (:ns %) "/" (:fn %))) })
+       (:trace-elems parsed-exception)))
+
 (defn report [exception config]
   (when (notifications-enabled? config)
     (let [parsed-exception (stacktrace/parse-exception exception)]
@@ -27,14 +44,9 @@
                                        :app {:releaseStage (:release-stage config)}
                                        :device {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}
                                        :payloadVersion "2"
-                                       :exceptions [{"message" (:message parsed-exception)
-                                                     "errorClass" (last (string/split (str (:class parsed-exception)) #" "))
-                                                     "stacktrace" (map #(-> {"file" (:file %)
-                                                                             "lineNumber" (:line %)
-                                                                             "method" (if (:java %)
-                                                                                        (str (:class %) "/" (:method %))
-                                                                                        (str (:ns %) "/" (:fn %))) })
-                                                                       (:trace-elems parsed-exception))}]}]}
+                                       :exceptions [{:message (:message parsed-exception)
+                                                     :errorClass (last (string/split (str (:class parsed-exception)) #" "))
+                                                     :stacktrace (generate-bugsnag-stacktrace parsed-exception)}]}]}
                             config))))
 
 (defn- report-web-exception [exception config request]
