@@ -1,5 +1,5 @@
 (defproject bugsnag-client "0.1.0"
-  :description "Track exceptions from your Clojure application in Bugsnag"
+  :description "Report exceptions from your Clojure application to Bugsnag"
   :url "http://github.com/omartell/bugsnag-client"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
