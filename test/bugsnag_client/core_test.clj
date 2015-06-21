@@ -17,7 +17,7 @@
   (throw (ex-info "Boom!" {})))
 
 (def bugsnag-config
-  {:api-key "770c0307e1a8949161ba0a8c904ebd6d"
+  {:api-key "key"
    :notify-release-stages ["staging" "production"]
    :release-stage "production"})
 
@@ -31,7 +31,7 @@
                   :scheme :http
                   :request-method :get
                   :headers {"host" "localhost"}} request-info
-                  {:api-key "770c0307e1a8949161ba0a8c904ebd6d"} (in config)
+                  {:api-key "key"} (in config)
                   Exception e)
         (side-effects [bugsnag/report-web-exception]
                       (try
@@ -47,7 +47,7 @@
 
 ;;Send a JSON post request to bugsnag with the exception information
 (expect (more-of [[exception-map]]
-                 {:apiKey "770c0307e1a8949161ba0a8c904ebd6d"
+                 {:apiKey "key"
                   :notifier {:name "bugsnag-client"
                              :version "0.0.1"
                              :url "https://github.com/omartell/bugsnag-client"}} (in exception-map)
@@ -64,6 +64,6 @@
                                     (fn []
                                       (throw (ex-info "Bugsnag should not be notified!" {:cause "foo"})))]
                         (bugsnag/report (trigger-exception)
-                                        {:api-key "770c0307e1a8949161ba0a8c904ebd6d"
+                                        {:api-key "key"
                                          :notify-release-stages ["production"]
                                          :release-stage "staging"}))))

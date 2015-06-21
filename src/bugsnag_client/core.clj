@@ -1,15 +1,12 @@
 (ns bugsnag-client.core
-  (:require [cheshire.core :as json]
+  (:require [clojure.data.json :as json]
             [clojure.string :as string]
             [clj-http.client :as http]
             [clj-stacktrace.core :as stacktrace]))
 
-(def hostname
-  (.getHostName (java.net.InetAddress/getLocalHost)))
-
 (defn- post-json-to-bugsnag [payload]
   (http/post "https://notify.bugsnag.com"
-             {:body (json/generate-string payload)
+             {:body (json/write-str payload)
               :content-type :json
               :accept :json}))
 
@@ -26,7 +23,7 @@
                                         :url "https://github.com/omartell/bugsnag-client"}
                              :events [{:severity "error"
                                        :app {:releaseStage (:release-stage config)}
-                                       :device {:hostname hostname}
+                                       :device {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}
                                        :payloadVersion "2"
                                        :exceptions [{"message" (:message parsed-exception)
                                                      "errorClass" (last (string/split (str (:class parsed-exception)) #" "))
