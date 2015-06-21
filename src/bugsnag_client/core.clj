@@ -47,6 +47,6 @@
             (str "The api key must be passed as a string under :api-key, but got " (pr-str (:api-key config)) " from (:api-key config)"))
     (try
       (handler request)
-      (catch Exception e
-        (report-web-exception e config request)
-        (throw e)))))
+      (catch Throwable t
+        (report-web-exception t config request)
+        (throw t)))))
