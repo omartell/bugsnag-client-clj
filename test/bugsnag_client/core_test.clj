@@ -67,3 +67,12 @@
                                         {:api-key "key"
                                          :notify-release-stages ["production"]
                                          :release-stage "staging"}))))
+
+;;It allows to send the exception notification not using SSL
+(expect (more-of [[url request]]
+                 #"http://" url)
+        (side-effects [clj-http.client/post]
+                      (bugsnag/report (trigger-exception)
+                                      {:api-key "key" :use-ssl false
+                                       :notify-release-stages ["production"]
+                                       :release-stage "production"})))

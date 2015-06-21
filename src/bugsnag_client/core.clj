@@ -4,8 +4,10 @@
             [clj-http.client :as http]
             [clj-stacktrace.core :as stacktrace]))
 
-(defn- post-json-to-bugsnag [payload]
-  (http/post "https://notify.bugsnag.com"
+(defn- post-json-to-bugsnag [payload config]
+  (http/post (if (:use-ssl config true)
+               "https://notify.bugsnag.com"
+               "http://notify.bugsnag.com")
              {:body (json/write-str payload)
               :content-type :json
               :accept :json}))
@@ -32,7 +34,8 @@
                                                                              "method" (if (:java %)
                                                                                         (str (:class %) "/" (:method %))
                                                                                         (str (:ns %) "/" (:fn %))) })
-                                                                       (:trace-elems parsed-exception))}]}]}))))
+                                                                       (:trace-elems parsed-exception))}]}]}
+                            config))))
 
 (defn- report-web-exception [exception config request]
   (report exception config))
