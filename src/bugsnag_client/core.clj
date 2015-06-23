@@ -34,24 +34,37 @@
                        (str (:ns %) "/" (:fn %))) })
        (:trace-elems parsed-exception)))
 
-(defn report [exception config]
-  (when (report-to-bugsnag? config)
-    (let [parsed-exception (stacktrace/parse-exception exception)]
-      (post-json-to-bugsnag {:apiKey (:api-key config)
-                             :notifier {:name "bugsnag-client"
-                                        :version "0.0.1"
-                                        :url "https://github.com/omartell/bugsnag-client"}
-                             :events [{:severity "error"
-                                       :app {:releaseStage (:release-stage config)}
-                                       :device {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}
-                                       :payloadVersion "2"
-                                       :exceptions [{:message (:message parsed-exception)
-                                                     :errorClass (last (string/split (str (:class parsed-exception)) #" "))
-                                                     :stacktrace (generate-bugsnag-stacktrace parsed-exception config)}]}]}
-                            config))))
+(defn- request-metadata [{request-info :request :as metadata}]
+  (if request-info
+    (let [metadata (assoc {} :request (select-keys request-info
+                                                   [:server-port :server-name :remote-addr :uri
+                                                    :query-string :scheme :request-method
+                                                    :headers :content-length :content-type]))]
+      (if (:body request-info)
+        (assoc-in metadata [:request :body] (slurp (get request-info :body)))
+        metadata))
+    {}))
 
-(defn- report-web-exception [exception config request]
-  (report exception config))
+(defn report
+  ([exception config metadata]
+   (when (report-to-bugsnag? config)
+     (let [parsed-exception (stacktrace/parse-exception exception)]
+       (post-json-to-bugsnag {:apiKey (:api-key config)
+                              :notifier {:name "bugsnag-client"
+                                         :version "0.0.1"
+                                         :url "https://github.com/omartell/bugsnag-client"}
+                              :events [{:severity "error"
+                                        :app {:releaseStage (:release-stage config)}
+                                        :device {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}
+                                        :payloadVersion "2"
+                                        :metaData (-> {}
+                                                      (merge (request-metadata metadata)))
+                                        :exceptions [{:message (:message parsed-exception)
+                                                      :errorClass (last (string/split (str (:class parsed-exception)) #" "))
+                                                      :stacktrace (generate-bugsnag-stacktrace parsed-exception config)}]}]}
+                             config))))
+  ([exception config]
+   (report exception config {})))
 
 (defn wrap-bugsnag [handler config]
   "Ring compatible handler that sends exceptions raised by other handlers to Bugsnag."
@@ -61,5 +74,5 @@
     (try
       (handler request)
       (catch Throwable t
-        (report-web-exception t config request)
+        (report t config {:request request})
         (throw t)))))

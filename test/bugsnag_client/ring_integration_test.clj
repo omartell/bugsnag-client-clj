@@ -17,9 +17,14 @@
 (defroutes app-routes
   (GET "/boom" []
        (throw
-        (ex-info "The ice cream has melted!"
-                 {:causes             #{:fridge-door-open :dangerously-high-temperature}
-                  :current-temperature {:value 25 :unit :celcius}}))))
+        (ex-info "Kaboom!"
+                 {:causes #{:fridge-door-open :dangerously-high-temperature}
+                  :current-temperature {:value 25 :unit :celcius}})))
+  (POST "/crash" []
+        (throw
+         (ex-info "Crash!"
+                  {:causes #{:fridge-door-open :dangerously-high-temperature}
+                   :current-temperature {:value 25 :unit :celcius}}))))
 
 (def bugsnag-config
   {:api-key (env :bugsnag-api-key)
@@ -49,13 +54,24 @@
   (when (nil? @server)
     (reset! server (http-server/run-server app {:port 4347}))))
 
-(deftest notify-bugsnag-on-exception
+(deftest notify-bugsnag-on-exception-on-get-request
   (start-server)
   (let [application-response @(http-client/get "http://localhost:4347/boom")]
     (is (= (:status application-response) 404)))
-  (let [last-error-on-bugsnag (-> @(http-client/get bugsnag-errors-url)
-                                  :body
-                                  (json/read-str :key-fn keyword)
-                                  first)]
-    (is (= (:last_message last-error-on-bugsnag) "The ice cream has melted!")))
+  (let [errors-in-bugsnag (-> @(http-client/get bugsnag-errors-url)
+                              :body
+                              (json/read-str :key-fn keyword))]
+    (is (some (fn [e] (= (:last_message e) "Kaboom!")) errors-in-bugsnag)))
+  (stop-server))
+
+(deftest notify-bugsnag-on-exception-on-post-request
+  (start-server)
+  (let [application-response @(http-client/post "http://localhost:4347/crash"
+                                                {:form-params {:foo 1
+                                                               :bar ["async" "client" "server"]}})]
+    (is (= (:status application-response) 404)))
+  (let [errors-in-bugsnag (-> @(http-client/get bugsnag-errors-url)
+                              :body
+                              (json/read-str :key-fn keyword))]
+    (is (some (fn [e] (= (:last_message e) "Crash!")) errors-in-bugsnag)))
   (stop-server))

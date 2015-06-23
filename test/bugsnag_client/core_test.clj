@@ -22,7 +22,7 @@
    :release-stage "production"})
 
 ;;The bugsnag-ring-handler gets notified when an exception happens
-(expect (more-of [[e config request-info]]
+(expect (more-of [[e config metadata]]
                  {:server-port 80
                   :server-name "localhost"
                   :remote-addr "localhost"
@@ -30,10 +30,10 @@
                   :query-string nil
                   :scheme :http
                   :request-method :get
-                  :headers {"host" "localhost"}} request-info
+                  :headers {"host" "localhost"}} (:request metadata)
                   {:api-key "key"} (in config)
                   Exception e)
-        (side-effects [bugsnag/report-web-exception]
+        (side-effects [bugsnag/report]
                       (try
                         (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
                           (wrapped-handler (mock/request :get "/")))
@@ -117,3 +117,50 @@
                                        :application-packages ["bugsnag-client"]
                                        :notify-release-stages ["production"]
                                        :release-stage "production"})))
+
+;;Expect to send POST request information to bugsnag
+(expect (more-of [[exception-map config]]
+                 {:server-port 80
+                  :server-name "localhost"
+                  :remote-addr "localhost"
+                  :uri "/"
+                  :query-string "a=b"
+                  :scheme :http
+                  :content-length 7
+                  :body "x=y&z=n"
+                  :content-type "application/x-www-form-urlencoded"
+                  :request-method :post
+                  :headers {"host" "localhost"
+                            "content-type" "application/x-www-form-urlencoded"
+                            "content-length" "7"}} (-> exception-map
+                                                       :events
+                                                       first
+                                                       :metaData
+                                                       :request))
+        (side-effects [bugsnag/post-json-to-bugsnag]
+                      (try
+                        (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
+                          (wrapped-handler (mock/request :post
+                                                         "/?a=b"
+                                                         (array-map :x "y" :z "n"))))
+                        (catch Exception e))))
+
+;;Expect to send GET request information to Bugsnag
+(expect (more-of [[exception-map config]]
+                 {:server-port 80
+                  :server-name "localhost"
+                  :remote-addr "localhost"
+                  :uri "/"
+                  :query-string "a=b"
+                  :scheme :http
+                  :request-method :get
+                  :headers {"host" "localhost"}} (-> exception-map
+                                                     :events
+                                                     first
+                                                     :metaData
+                                                     :request))
+        (side-effects [bugsnag/post-json-to-bugsnag]
+                      (try
+                        (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
+                          (wrapped-handler (mock/request :get "/?a=b")))
+                        (catch Exception e))))
