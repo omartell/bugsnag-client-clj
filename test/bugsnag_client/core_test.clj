@@ -96,3 +96,24 @@
                                       {:api-key "key"
                                        :notify-release-stages ["production"]
                                        :release-stage "production"})))
+
+;;It allows to set the application packages to later see if the stacktrace
+;;element was generated from application code or library/platform code
+(expect (more-of [[exception-map]]
+                 {:apiKey "key"
+                  :notifier {:name "bugsnag-client"
+                             :version "0.0.1"
+                             :url "https://github.com/omartell/bugsnag-client"}} (in exception-map)
+                             {:inProject true} (in (-> exception-map
+                                                       :events
+                                                       first
+                                                       :exceptions
+                                                       first
+                                                       :stacktrace
+                                                       second)))
+        (side-effects [bugsnag/post-json-to-bugsnag]
+                      (bugsnag/report (trigger-exception)
+                                      {:api-key "key"
+                                       :application-packages ["bugsnag-client"]
+                                       :notify-release-stages ["production"]
+                                       :release-stage "production"})))

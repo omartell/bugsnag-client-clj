@@ -13,20 +13,21 @@
               :content-type :json
               :accept :json}))
 
-(defn- notifications-enabled? [config]
+(defn- report-to-bugsnag? [config]
   (let [notify-release-stages (into #{} (:notify-release-stages config))]
     (notify-release-stages (config :release-stage "production"))))
 
-(defn- in-project? [namespace]
-  (let [application-namespace (second (edn/read-string (slurp "project.clj")))]
-    (boolean (re-find (re-pattern (str application-namespace))
-                      namespace))))
+(defn- in-project? [namespace config]
+  (let [default-application-package (second (edn/read-string (slurp "project.clj")))
+        application-packages (:application-packages config [default-application-package])]
+    (boolean (some #(.startsWith namespace (str %))
+                   application-packages))))
 
-(defn- generate-bugsnag-stacktrace [parsed-exception]
+(defn- generate-bugsnag-stacktrace [parsed-exception config]
   (map #(-> {:file (:file %)
              :inProject (if (:java %)
-                          false
-                          (in-project? (:ns %)))
+                          (in-project? (:class %) config)
+                          (in-project? (:ns %) config))
              :lineNumber (:line %)
              :method (if (:java %)
                        (str (:class %) "/" (:method %))
@@ -34,7 +35,7 @@
        (:trace-elems parsed-exception)))
 
 (defn report [exception config]
-  (when (notifications-enabled? config)
+  (when (report-to-bugsnag? config)
     (let [parsed-exception (stacktrace/parse-exception exception)]
       (post-json-to-bugsnag {:apiKey (:api-key config)
                              :notifier {:name "bugsnag-client"
@@ -46,7 +47,7 @@
                                        :payloadVersion "2"
                                        :exceptions [{:message (:message parsed-exception)
                                                      :errorClass (last (string/split (str (:class parsed-exception)) #" "))
-                                                     :stacktrace (generate-bugsnag-stacktrace parsed-exception)}]}]}
+                                                     :stacktrace (generate-bugsnag-stacktrace parsed-exception config)}]}]}
                             config))))
 
 (defn- report-web-exception [exception config request]
