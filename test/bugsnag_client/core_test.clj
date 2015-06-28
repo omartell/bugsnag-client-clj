@@ -123,7 +123,7 @@
                  {:server-port 80
                   :server-name "localhost"
                   :remote-addr "localhost"
-                  :uri "/"
+                  :url "http://localhost/?a=b"
                   :query-string "a=b"
                   :scheme :http
                   :content-length 7
@@ -150,7 +150,7 @@
                  {:server-port 80
                   :server-name "localhost"
                   :remote-addr "localhost"
-                  :uri "/"
+                  :url "http://localhost/?a=b"
                   :query-string "a=b"
                   :scheme :http
                   :request-method :get

@@ -35,42 +35,47 @@
                        (str (:ns %) "/" (:fn %))) })
        (:trace-elems parsed-exception)))
 
-(defn- request-metadata [{request-info :request :as metadata}]
-  (if request-info
-    (let [metadata (assoc {} :request (select-keys request-info
-                                                   [:server-port
-                                                    :server-name
-                                                    :remote-addr
-                                                    :uri
-                                                    :query-string
-                                                    :scheme
-                                                    :request-method
-                                                    :headers
-                                                    :content-length
-                                                    :content-type]))]
-      (if (:body request-info)
-        (assoc-in metadata [:request :body] (util/body-string request-info))
-        metadata))
-    {}))
+(defn- request-metadata [request]
+  (let [metadata (select-keys request
+                              [:server-port
+                               :server-name
+                               :remote-addr
+                               :query-string
+                               :scheme
+                               :request-method
+                               :headers
+                               :content-length
+                               :content-type])
+    with-body (if (:body request)
+                (assoc metadata :body (util/body-string request))
+                metadata)
+    with-url (assoc with-body :url (util/request-url request))]
+    with-url))
+
+(defn bugsnag-payload
+  [exception config metadata]
+  (let [parsed-exception (stacktrace/parse-exception exception)]
+    {:apiKey (:api-key config)
+     :notifier {:name "bugsnag-client"
+                :version "0.0.1"
+                :url "https://github.com/omartell/bugsnag-client"}
+     :events [{:severity "error"
+               :app {:releaseStage (:release-stage config)}
+               :device {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}
+               :payloadVersion "2"
+               :metaData (let [exception-metadata {}]
+                           (if (:request metadata)
+                             (merge exception-metadata
+                                    {:request (request-metadata (:request metadata))})
+                             exception-metadata))
+               :exceptions [{:message (:message parsed-exception)
+                             :errorClass (last (string/split (str (:class parsed-exception)) #" "))
+                             :stacktrace (generate-bugsnag-stacktrace parsed-exception config)}]}]}))
 
 (defn report
   ([exception config metadata]
    (when (report-to-bugsnag? config)
-     (let [parsed-exception (stacktrace/parse-exception exception)]
-       (post-json-to-bugsnag {:apiKey (:api-key config)
-                              :notifier {:name "bugsnag-client"
-                                         :version "0.0.1"
-                                         :url "https://github.com/omartell/bugsnag-client"}
-                              :events [{:severity "error"
-                                        :app {:releaseStage (:release-stage config)}
-                                        :device {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}
-                                        :payloadVersion "2"
-                                        :metaData (-> {}
-                                                      (merge (request-metadata metadata)))
-                                        :exceptions [{:message (:message parsed-exception)
-                                                      :errorClass (last (string/split (str (:class parsed-exception)) #" "))
-                                                      :stacktrace (generate-bugsnag-stacktrace parsed-exception config)}]}]}
-                             config))))
+     (post-json-to-bugsnag (bugsnag-payload exception config metadata) config)))
   ([exception config]
    (report exception config {})))
 
