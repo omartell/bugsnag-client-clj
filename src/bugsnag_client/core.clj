@@ -52,8 +52,7 @@
            {:url (util/request-url request)
             :request-method (-> request :request-method name string/upper-case)})))
 
-(defn bugsnag-payload
-  [exception config metadata]
+(defn bugsnag-payload [exception config metadata]
   (let [parsed-exception (stacktrace/parse-exception exception)]
     {:apiKey (:api-key config)
      :notifier {:name "bugsnag-client"

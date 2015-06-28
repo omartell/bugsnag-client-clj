@@ -58,8 +58,8 @@
                   :notifier {:name "bugsnag-client"
                              :version "0.0.1"
                              :url "https://github.com/omartell/bugsnag-client"}} (in exception-map)
-                  {:severity "error"
-                   :app {:releaseStage "production"}} (in (-> exception-map :events first)))
+                             {:severity "error"
+                              :app {:releaseStage "production"}} (in (-> exception-map :events first)))
         (side-effects [bugsnag/post-json-to-bugsnag]
                       (bugsnag/report (trigger-exception) bugsnag-config)))
 
@@ -91,12 +91,12 @@
                              :version "0.0.1"
                              :url "https://github.com/omartell/bugsnag-client"}} (in exception-map)
                              {:inProject true} (in (-> exception-map
-                                                        :events
-                                                        first
-                                                        :exceptions
-                                                        first
-                                                        :stacktrace
-                                                        second)))
+                                                       :events
+                                                       first
+                                                       :exceptions
+                                                       first
+                                                       :stacktrace
+                                                       second)))
         (side-effects [bugsnag/post-json-to-bugsnag]
                       (bugsnag/report (trigger-exception)
                                       {:api-key "key"

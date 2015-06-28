@@ -78,3 +78,15 @@
                               (json/read-str :key-fn keyword))]
     (is (some (fn [e] (= (:last_message e) "Crash!")) errors-in-bugsnag)))
   (stop-server))
+
+(deftest notify-bugsnag-using-the-report-function
+  (start-server)
+  (bugsnag/report (ex-info "Ooops!"
+                           {:causes #{:fridge-door-open :dangerously-high-temperature}
+                            :current-temperature {:value 25 :unit :celcius}})
+                  bugsnag-config)
+  (let [errors-in-bugsnag (-> @(http-client/get bugsnag-errors-url)
+                              :body
+                              (json/read-str :key-fn keyword))]
+    (is (some (fn [e] (= (:last_message e) "Ooops!")) errors-in-bugsnag)))
+  (stop-server))
