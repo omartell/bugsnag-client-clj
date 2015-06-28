@@ -1,12 +1,16 @@
 (defproject bugsnag-client "0.1.0"
   :description "Report exceptions from your Clojure application to Bugsnag"
+
   :url "http://github.com/omartell/bugsnag-client"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+
+  :license {:name "The MIT License"
+            :url "http://opensource.org/licenses/MIT"}
+
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [clj-http "1.1.2"]
                  [org.clojure/data.json "0.2.6"]
                  [clj-stacktrace "0.2.8"]]
+
   :profiles
   {:dev {:dependencies [[expectations "2.0.16"]
                         [environ "1.0.0"]
