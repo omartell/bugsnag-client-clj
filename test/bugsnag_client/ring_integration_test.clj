@@ -35,8 +35,7 @@
   (fn [request]
     (try
       (handler request)
-      (catch Throwable e
-        (pprint e)))))
+      (catch Throwable e))))
 
 (def app
   (-> app-routes

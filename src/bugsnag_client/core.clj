@@ -3,6 +3,7 @@
             [clojure.edn :as edn]
             [clojure.string :as string]
             [clj-http.client :as http]
+            [ring.util.request :as util]
             [clj-stacktrace.core :as stacktrace]))
 
 (defn- post-json-to-bugsnag [payload config]
@@ -37,11 +38,18 @@
 (defn- request-metadata [{request-info :request :as metadata}]
   (if request-info
     (let [metadata (assoc {} :request (select-keys request-info
-                                                   [:server-port :server-name :remote-addr :uri
-                                                    :query-string :scheme :request-method
-                                                    :headers :content-length :content-type]))]
+                                                   [:server-port
+                                                    :server-name
+                                                    :remote-addr
+                                                    :uri
+                                                    :query-string
+                                                    :scheme
+                                                    :request-method
+                                                    :headers
+                                                    :content-length
+                                                    :content-type]))]
       (if (:body request-info)
-        (assoc-in metadata [:request :body] (slurp (get request-info :body)))
+        (assoc-in metadata [:request :body] (util/body-string request-info))
         metadata))
     {}))
 
