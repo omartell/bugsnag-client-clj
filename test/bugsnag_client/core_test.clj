@@ -5,7 +5,9 @@
    [clj-http.client :as http-client]
    [cheshire.core :as json]
    [clojure.pprint :as pprint]
-   [ring.mock.request :as mock]))
+   [ring.mock.request :as mock]
+   [ring.middleware.params :as params]
+   [ring.middleware.session :as session]))
 
 (defn trigger-exception []
   (try
@@ -21,22 +23,27 @@
    :notify-release-stages ["staging" "production"]
    :release-stage "production"})
 
+(def handler
+  (-> erroring-handler
+      (bugsnag/wrap-bugsnag bugsnag-config)
+      params/wrap-params
+      session/wrap-session))
+
 ;;The bugsnag-ring-handler gets notified when an exception happens
 (expect (more-of [[e config metadata]]
                  {:server-port 80
                   :server-name "localhost"
                   :remote-addr "localhost"
                   :uri "/"
-                  :query-string nil
+                  :params {}
+                  :session {}
                   :scheme :http
-                  :request-method :get
-                  :headers {"host" "localhost"}} (:request metadata)
+                  :headers {"host" "localhost"}} (in (:request metadata))
                   {:api-key "key"} (in config)
                   Exception e)
         (side-effects [bugsnag/report]
                       (try
-                        (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
-                          (wrapped-handler (mock/request :get "/")))
+                        (handler (mock/request :get "/"))
                         (catch Exception e))))
 
 ;;Rethrow exception after sending request to bugsnag
@@ -52,8 +59,7 @@
                              :version "0.0.1"
                              :url "https://github.com/omartell/bugsnag-client"}} (in exception-map)
                   {:severity "error"
-                   :app {:releaseStage "production"}
-                   :device {:hostname "sledgehammer.local"}} (in (-> exception-map :events first)))
+                   :app {:releaseStage "production"}} (in (-> exception-map :events first)))
         (side-effects [bugsnag/post-json-to-bugsnag]
                       (bugsnag/report (trigger-exception) bugsnag-config)))
 
@@ -124,12 +130,9 @@
                   :server-name "localhost"
                   :remote-addr "localhost"
                   :url "http://localhost/?a=b"
-                  :query-string "a=b"
-                  :scheme :http
-                  :content-length 7
-                  :body "x=y&z=n"
+                  :params {"a" "b", "z" "n", "x" "y"}
                   :content-type "application/x-www-form-urlencoded"
-                  :request-method :post
+                  :request-method "POST"
                   :headers {"host" "localhost"
                             "content-type" "application/x-www-form-urlencoded"
                             "content-length" "7"}} (-> exception-map
@@ -139,10 +142,9 @@
                                                        :request))
         (side-effects [bugsnag/post-json-to-bugsnag]
                       (try
-                        (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
-                          (wrapped-handler (mock/request :post
-                                                         "/?a=b"
-                                                         (array-map :x "y" :z "n"))))
+                        (handler (mock/request :post
+                                               "/?a=b"
+                                               (array-map :x "y" :z "n")))
                         (catch Exception e))))
 
 ;;Expect to send GET request information to Bugsnag
@@ -151,9 +153,8 @@
                   :server-name "localhost"
                   :remote-addr "localhost"
                   :url "http://localhost/?a=b"
-                  :query-string "a=b"
-                  :scheme :http
-                  :request-method :get
+                  :params {"a" "b"}
+                  :request-method "GET"
                   :headers {"host" "localhost"}} (-> exception-map
                                                      :events
                                                      first
@@ -161,6 +162,5 @@
                                                      :request))
         (side-effects [bugsnag/post-json-to-bugsnag]
                       (try
-                        (let [wrapped-handler (bugsnag/wrap-bugsnag erroring-handler bugsnag-config)]
-                          (wrapped-handler (mock/request :get "/?a=b")))
+                        (handler (mock/request :get "/?a=b"))
                         (catch Exception e))))

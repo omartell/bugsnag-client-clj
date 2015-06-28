@@ -8,6 +8,8 @@
    [clojure.pprint :refer :all]
    [org.httpkit.server :as http-server]
    [org.httpkit.client :as http-client]
+   [ring.middleware.params :as params]
+   [ring.middleware.session :as session]
    [clojure.data.json :as json]
    [bugsnag-client.core :as bugsnag]))
 
@@ -40,6 +42,8 @@
 (def app
   (-> app-routes
       (bugsnag/wrap-bugsnag bugsnag-config)
+      params/wrap-params
+      session/wrap-session
       hoover-exceptions))
 
 (defonce server (atom nil))

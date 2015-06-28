@@ -40,17 +40,17 @@
                               [:server-port
                                :server-name
                                :remote-addr
-                               :query-string
-                               :scheme
-                               :request-method
                                :headers
-                               :content-length
                                :content-type])
-    with-body (if (:body request)
-                (assoc metadata :body (util/body-string request))
-                metadata)
-    with-url (assoc with-body :url (util/request-url request))]
-    with-url))
+        with-session (if (:session request)
+                       (assoc metadata :session (:session request))
+                       metadata)
+        with-params (if (:params request)
+                      (assoc metadata :params (:params request))
+                      metadata)]
+    (merge with-params
+           {:url (util/request-url request)
+            :request-method (-> request :request-method name string/upper-case)})))
 
 (defn bugsnag-payload
   [exception config metadata]
@@ -61,9 +61,8 @@
                 :url "https://github.com/omartell/bugsnag-client"}
      :events [{:severity "error"
                :app {:releaseStage (:release-stage config)}
-               :device {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}
                :payloadVersion "2"
-               :metaData (let [exception-metadata {}]
+               :metaData (let [exception-metadata {:host {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}}]
                            (if (:request metadata)
                              (merge exception-metadata
                                     {:request (request-metadata (:request metadata))})
