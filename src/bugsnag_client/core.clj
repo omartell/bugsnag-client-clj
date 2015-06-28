@@ -12,6 +12,8 @@
                "http://notify.bugsnag.com")
              {:body (json/write-str payload)
               :content-type :json
+              :socket-timeout (get config :socket-timeout 3000)
+              :connection-timeout (get config :connection-timeout 3000)
               :accept :json}))
 
 (defn- report-to-bugsnag? [config]
