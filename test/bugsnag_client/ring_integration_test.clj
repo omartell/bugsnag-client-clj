@@ -17,14 +17,16 @@
   (env :bugsnag-errors-url))
 
 (defroutes app-routes
+
   (GET "/boom" []
        (throw
-        (ex-info "Kaboom!"
+        (ex-info "Kaboom!!!!"
                  {:causes #{:fridge-door-open :dangerously-high-temperature}
                   :current-temperature {:value 25 :unit :celcius}})))
+
   (POST "/crash" []
         (throw
-         (ex-info "Crash!"
+         (ex-info "Crash!!!!"
                   {:causes #{:fridge-door-open :dangerously-high-temperature}
                    :current-temperature {:value 25 :unit :celcius}}))))
 
@@ -39,9 +41,17 @@
       (handler request)
       (catch Throwable e))))
 
+(def user
+  {:name "Oliver Martell" :email "oliver.martell@gmail.com" :id 1})
+
+(defn add-user [handler]
+  (fn [request]
+    (handler (assoc request :user user))))
+
 (def app
   (-> app-routes
       (bugsnag/wrap-bugsnag bugsnag-config)
+      add-user
       params/wrap-params
       session/wrap-session
       hoover-exceptions))
@@ -64,7 +74,7 @@
   (let [errors-in-bugsnag (-> @(http-client/get bugsnag-errors-url)
                               :body
                               (json/read-str :key-fn keyword))]
-    (is (some (fn [e] (= (:last_message e) "Kaboom!")) errors-in-bugsnag)))
+    (is (some (fn [e] (= (:last_message e) "Kaboom!!!!")) errors-in-bugsnag)))
   (stop-server))
 
 (deftest notify-bugsnag-on-exception-on-post-request
@@ -76,17 +86,14 @@
   (let [errors-in-bugsnag (-> @(http-client/get bugsnag-errors-url)
                               :body
                               (json/read-str :key-fn keyword))]
-    (is (some (fn [e] (= (:last_message e) "Crash!")) errors-in-bugsnag)))
+    (is (some (fn [e] (= (:last_message e) "Crash!!!!")) errors-in-bugsnag)))
   (stop-server))
 
 (deftest notify-bugsnag-using-the-report-function
   (start-server)
-  (bugsnag/report (ex-info "Ooops!"
-                           {:causes #{:fridge-door-open :dangerously-high-temperature}
-                            :current-temperature {:value 25 :unit :celcius}})
-                  bugsnag-config)
+  (bugsnag/report (Exception. "Ooops!!!!") bugsnag-config {:user user})
   (let [errors-in-bugsnag (-> @(http-client/get bugsnag-errors-url)
                               :body
                               (json/read-str :key-fn keyword))]
-    (is (some (fn [e] (= (:last_message e) "Ooops!")) errors-in-bugsnag)))
+    (is (some (fn [e] (= (:last_message e) "Ooops!!!!")) errors-in-bugsnag)))
   (stop-server))

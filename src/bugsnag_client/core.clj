@@ -55,7 +55,8 @@
             :request-method (-> request :request-method name string/upper-case)})))
 
 (defn bugsnag-payload [exception config metadata]
-  (let [parsed-exception (stacktrace/parse-exception exception)]
+  (let [parsed-exception (stacktrace/parse-exception exception)
+        error-class (-> exception .getClass .getName)]
     {:apiKey (:api-key config)
      :notifier {:name "bugsnag-client"
                 :version "0.0.1"
@@ -63,13 +64,14 @@
      :events [{:severity "error"
                :app {:releaseStage (:release-stage config)}
                :payloadVersion "2"
+               :user (:user metadata)
                :metaData (let [exception-metadata {:host {:hostname (.getHostName (java.net.InetAddress/getLocalHost))}}]
                            (if (:request metadata)
                              (merge exception-metadata
                                     {:request (request-metadata (:request metadata))})
                              exception-metadata))
                :exceptions [{:message (:message parsed-exception)
-                             :errorClass (last (string/split (str (:class parsed-exception)) #" "))
+                             :errorClass error-class
                              :stacktrace (generate-bugsnag-stacktrace parsed-exception config)}]}]}))
 
 (defn report
@@ -87,5 +89,5 @@
     (try
       (handler request)
       (catch Throwable t
-        (report t config {:request request})
+        (report t config {:request request :user (:user request)})
         (throw t)))))

@@ -164,3 +164,16 @@
                       (try
                         (handler (mock/request :get "/?a=b"))
                         (catch Exception e))))
+
+;;It allows to add user metadata
+(expect (more-of [[exception-map config]]
+                 {:email "oliver.martell@gmail.com"
+                  :name "Oliver Martell"
+                  :id 1} (-> exception-map
+                             :events
+                             first
+                             :user))
+        (side-effects [bugsnag/post-json-to-bugsnag]
+                      (try
+                        (handler (assoc (mock/request :get "/?a=b") :user {:email "oliver.martell@gmail.com" :name "Oliver Martell" :id 1}))
+                        (catch Exception e))))
