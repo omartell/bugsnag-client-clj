@@ -1,4 +1,4 @@
-(defproject bugsnag-client "0.1.0"
+(defproject bugsnag-client "0.1.1"
   :description "Report exceptions from your Clojure application to Bugsnag"
 
   :url "http://github.com/omartell/bugsnag-client-clj"
