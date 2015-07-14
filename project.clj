@@ -1,7 +1,7 @@
 (defproject bugsnag-client "0.1.0"
   :description "Report exceptions from your Clojure application to Bugsnag"
 
-  :url "http://github.com/omartell/bugsnag-client"
+  :url "http://github.com/omartell/bugsnag-client-clj"
 
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}

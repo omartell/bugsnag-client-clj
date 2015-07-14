@@ -1,5 +1,7 @@
 # bugsnag-client
 
+[![Clojars Project](http://clojars.org/bugsnag-client/latest-version.svg)](http://clojars.org/bugsnag-client)
+
 Report exceptions from your Clojure application to Bugsnag
 
 ## Usage
