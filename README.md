@@ -19,7 +19,30 @@ session information in your exception report, then make sure to add
   (-> app-routes
       (bugsnag/wrap-bugsnag {:api-key "Your project API key goes here"
                              :notify-release-stages ["staging" "production"]
-                             :release-stage "production"})))
+                             :release-stage "production"})
+      params/wrap-params
+      session/wrap-session))
+```
+
+### Reporting non-web exceptions
+
+Use `bugsnag/report` to report any exceptions raised outside of web handlers.
+
+```Clojure
+(ns app.core
+  (:require [bugsnag-client.core :as bugsnag]))
+
+(def config
+  {:api-key "Your project API key goes here"
+  :notify-release-stages ["staging" "production"]
+  :release-stage "production"})
+
+(def metadata
+  {:user {:email "foo@bar.com"}})
+
+(bugsnag/report (Exception. "Ooops")
+                config
+                metadata)
 ```
 
 ## Copyright & License
