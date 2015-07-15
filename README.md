@@ -11,7 +11,7 @@ Report exceptions from your Clojure application to Bugsnag
 Use the `bugnag/wrap-bugsnag` ring middleware to track exceptions
 raised by your web handlers. If you want to have access to the request params and
 session information in your exception report, then make sure to add
-`bugsnag/wrap-bugsnag` after those middlewares.
+`bugsnag/wrap-bugsnag` before those middlewares.
 
 ``` Clojure
 (ns app.core
